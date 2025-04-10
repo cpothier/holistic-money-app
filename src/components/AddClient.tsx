@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
-  Container,
   TextField,
   Typography,
   Paper,
@@ -13,17 +13,22 @@ import {
   TableHead,
   TableRow,
   Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
   DialogTitle,
-  Alert,
+  DialogContent,
+  DialogActions,
   Snackbar,
+  Alert,
+  Chip,
   IconButton,
-  Tooltip
+  TablePagination,
+  Container,
+  Tooltip,
+  DialogContentText,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon } from '@mui/icons-material';
-import { fetchClients, apiClient } from '../services/api';
+import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { fetchClients, addClient, deleteClient } from '../services/api_new';
 
 interface Client {
   client_id: string;
@@ -32,22 +37,24 @@ interface Client {
   comments_table_name: string;
   created_at: string;
   updated_at: string;
+  status: 'active' | 'inactive';
 }
 
 const AddClient: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [clientForm, setClientForm] = useState({
     client_name: '',
-    bigquery_dataset: ''
+    bigquery_dataset: '',
+    comments_table_name: '',
+    status: 'active' as 'active' | 'inactive'
   });
   const [openDialog, setOpenDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
-  const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error'
   });
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Fetch clients on component mount
   useEffect(() => {
@@ -57,7 +64,12 @@ const AddClient: React.FC = () => {
   const fetchClientsData = async () => {
     try {
       const data = await fetchClients();
-      setClients(data);
+      // Add status property to each client
+      const clientsWithStatus = data.map(client => ({
+        ...client,
+        status: 'active' as const
+      }));
+      setClients(clientsWithStatus);
     } catch (error) {
       console.error('Error fetching clients:', error);
       setSnackbar({
@@ -68,41 +80,78 @@ const AddClient: React.FC = () => {
     }
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    if (!clientForm.client_name.trim()) {
+      errors.client_name = 'Client name is required';
+    } else if (!/^[a-z0-9_]+$/.test(clientForm.client_name)) {
+      errors.client_name = 'Client name can only contain lowercase letters, numbers, and underscores';
+    }
+
+    if (!clientForm.bigquery_dataset.trim()) {
+      errors.bigquery_dataset = 'BigQuery dataset is required';
+    } else if (!/^[a-z0-9_]+$/.test(clientForm.bigquery_dataset)) {
+      errors.bigquery_dataset = 'Dataset name can only contain lowercase letters, numbers, and underscores';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setClientForm(prev => ({
       ...prev,
       [name]: value
     }));
+    // Clear validation error when user types
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setClientForm(prev => ({
+      ...prev,
+      status: e.target.checked ? 'active' : 'inactive'
+    }));
   };
 
   const handleOpenAddDialog = () => {
-    setDialogMode('add');
-    setClientForm({ client_name: '', bigquery_dataset: '' });
-    setOpenDialog(true);
-  };
-
-  const handleOpenEditDialog = (client: Client) => {
-    setDialogMode('edit');
-    setEditingClientId(client.client_id);
-    setClientForm({
-      client_name: client.client_name,
-      bigquery_dataset: client.bigquery_dataset
+    setClientForm({ 
+      client_name: '', 
+      bigquery_dataset: '',
+      comments_table_name: '',
+      status: 'active'
     });
+    setValidationErrors({});
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setClientForm({ client_name: '', bigquery_dataset: '' });
-    setEditingClientId(null);
+    setClientForm({ 
+      client_name: '', 
+      bigquery_dataset: '',
+      comments_table_name: '',
+      status: 'active'
+    });
+    setValidationErrors({});
   };
 
   const handleAddClient = async () => {
+    if (!validateForm()) return;
+
     try {
-      const response = await apiClient.post('/clients', clientForm);
-      const data = response.data;
-      setClients(prev => [...prev, data]);
+      const newClient = await addClient({
+        ...clientForm,
+        comments_table_name: `${clientForm.client_name}_comments`
+      });
+      setClients(prev => [...prev, newClient]);
       handleCloseDialog();
       setSnackbar({
         open: true,
@@ -119,26 +168,24 @@ const AddClient: React.FC = () => {
     }
   };
 
-  const handleUpdateClient = async () => {
-    if (!editingClientId) return;
+  const handleDeleteClient = async (clientId: string) => {
+    if (!window.confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
+      return;
+    }
 
     try {
-      const response = await apiClient.patch(`/clients/${editingClientId}`, clientForm);
-      const updatedClient = response.data;
-      setClients(prev => prev.map(client => 
-        client.client_id === editingClientId ? updatedClient : client
-      ));
-      handleCloseDialog();
+      await deleteClient(clientId);
+      setClients(prev => prev.filter(client => client.client_id !== clientId));
       setSnackbar({
         open: true,
-        message: 'Client updated successfully',
+        message: 'Client deleted successfully',
         severity: 'success'
       });
     } catch (error) {
-      console.error('Error updating client:', error);
+      console.error('Error deleting client:', error);
       setSnackbar({
         open: true,
-        message: 'Failed to update client',
+        message: 'Failed to delete client',
         severity: 'error'
       });
     }
@@ -151,8 +198,8 @@ const AddClient: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Typography variant="h4" component="h1">
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" component="h1">
             Client Management
           </Typography>
           <Button
@@ -161,7 +208,7 @@ const AddClient: React.FC = () => {
             startIcon={<AddIcon />}
             onClick={handleOpenAddDialog}
           >
-            Add Client
+            Add New Client
           </Button>
         </Box>
 
@@ -172,6 +219,7 @@ const AddClient: React.FC = () => {
                 <TableCell>Client Name</TableCell>
                 <TableCell>BigQuery Dataset</TableCell>
                 <TableCell>Comments Table</TableCell>
+                <TableCell>Status</TableCell>
                 <TableCell>Created At</TableCell>
                 <TableCell>Updated At</TableCell>
                 <TableCell align="center">Actions</TableCell>
@@ -183,42 +231,40 @@ const AddClient: React.FC = () => {
                   <TableCell>{client.client_name}</TableCell>
                   <TableCell>{client.bigquery_dataset}</TableCell>
                   <TableCell>{client.comments_table_name}</TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={client.status} 
+                      color={client.status === 'active' ? 'success' : 'error'} 
+                      size="small"
+                    />
+                  </TableCell>
                   <TableCell>{new Date(client.created_at).toLocaleString()}</TableCell>
                   <TableCell>{new Date(client.updated_at).toLocaleString()}</TableCell>
                   <TableCell align="center">
-                    <Tooltip title="Edit Client">
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleOpenEditDialog(client)}
-                        color="primary"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                      <Tooltip title="Delete Client">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleDeleteClient(client.client_id)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
-              {clients.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    No clients found. Add a client to get started.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </TableContainer>
 
-        {/* Add/Edit Client Dialog */}
-        <Dialog open={openDialog} onClose={handleCloseDialog}>
-          <DialogTitle>
-            {dialogMode === 'add' ? 'Add New Client' : 'Edit Client'}
-          </DialogTitle>
+        {/* Add Client Dialog */}
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle>Add New Client</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              {dialogMode === 'add' 
-                ? 'Enter the client details below. The comments table name will be automatically generated.'
-                : 'Update the client details below.'}
+              Please enter the client details below. The client name will be used to create a unique table for comments.
             </DialogContentText>
             <TextField
               autoFocus
@@ -227,10 +273,11 @@ const AddClient: React.FC = () => {
               label="Client Name"
               type="text"
               fullWidth
-              variant="outlined"
               value={clientForm.client_name}
               onChange={handleInputChange}
-              sx={{ mb: 2 }}
+              error={!!validationErrors.client_name}
+              helperText={validationErrors.client_name}
+              sx={{ mt: 2 }}
             />
             <TextField
               margin="dense"
@@ -238,21 +285,32 @@ const AddClient: React.FC = () => {
               label="BigQuery Dataset"
               type="text"
               fullWidth
-              variant="outlined"
               value={clientForm.bigquery_dataset}
               onChange={handleInputChange}
-              helperText="e.g., austin_lifestyler_marts"
+              error={!!validationErrors.bigquery_dataset}
+              helperText={validationErrors.bigquery_dataset}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={clientForm.status === 'active'}
+                  onChange={handleStatusChange}
+                  name="status"
+                />
+              }
+              label="Active"
+              sx={{ mt: 2 }}
             />
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button 
-              onClick={dialogMode === 'add' ? handleAddClient : handleUpdateClient} 
+              onClick={handleAddClient} 
               variant="contained" 
               color="primary"
               disabled={!clientForm.client_name || !clientForm.bigquery_dataset}
             >
-              {dialogMode === 'add' ? 'Add Client' : 'Update Client'}
+              Add Client
             </Button>
           </DialogActions>
         </Dialog>
@@ -262,7 +320,6 @@ const AddClient: React.FC = () => {
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={handleCloseSnackbar}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert 
             onClose={handleCloseSnackbar} 

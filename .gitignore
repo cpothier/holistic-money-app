@@ -48,3 +48,4 @@ server/credentials/
 *.json
 *.key
 *.cert
+.vercel

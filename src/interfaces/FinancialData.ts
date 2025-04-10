@@ -1,7 +1,7 @@
 export interface FinancialData {
     entry_id: string;
     ordering_id: string;
-    txnDate: string;
+    txnDate: { value: string } | string;
     parent_account: string;
     sub_account: string | null;
     child_account: string | null;

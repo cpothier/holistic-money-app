@@ -5,17 +5,31 @@ import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { 
-  pgPool, bigquery, plBudgetViewTable, financialCommentsTable, 
+  pgPool, plBudgetViewTable, financialCommentsTable, 
   initializeDatabase 
 } from './db';
 import { syncCommentsToBigQuery, startSyncScheduler } from './services/syncService';
 import userRoutes from './routes/userRoutes';
+import clientRoutes from './routes/clientRoutes';
 import { authenticateToken, checkClientAccess } from './middleware/auth';
 import { initializeUserManagement } from './db/initUserManagement';
 import { UserService } from './services/userService';
+import { config } from 'dotenv';
+import path from 'path';
+import { BigQuery } from '@google-cloud/bigquery';
 
 // Load environment variables
-dotenv.config();
+const envPath = path.resolve(__dirname, '../../.env');
+console.log('Loading environment variables from:', envPath);
+config({ path: envPath });
+
+// Log important environment variables (without sensitive values)
+console.log('Environment check:');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('PROJECT_ID:', process.env.PROJECT_ID);
+console.log('GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'Set' : 'Not set');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 
 // Initialize Express app
 const app = express();
@@ -34,11 +48,21 @@ app.use(express.json());
 // User management routes
 app.use('/api', userRoutes);
 
+// Client management routes
+app.use('/api/clients', clientRoutes);
+
 // API Routes - Clients
 app.get('/api/clients', authenticateToken, async (req, res) => {
   try {
+    console.log('Fetching all clients from database...');
     // Get all clients from the database
     const result = await pgPool.query('SELECT * FROM clients ORDER BY client_name');
+    console.log(`Found ${result.rows.length} clients in database`);
+    console.log('Clients:', result.rows.map(row => ({
+      client_id: row.client_id,
+      client_name: row.client_name,
+      bigquery_dataset: row.bigquery_dataset
+    })));
     res.json(result.rows);
   } catch (error: any) {
     console.error('Error fetching clients:', error);
@@ -123,17 +147,31 @@ app.get('/api/financial-data', authenticateToken, checkClientAccess, async (req,
     
     console.log(`Fetching financial data for client: ${client}, month: ${month || 'all'}`);
     
+    if (!client) {
+      console.error('No client specified in request');
+      return res.status(400).json({ message: 'Client parameter is required' });
+    }
+    
     // Get the client's BigQuery dataset - using case-insensitive comparison
+    console.log('Looking up client in database:', client);
     const clientResult = await pgPool.query(
-      'SELECT bigquery_dataset FROM clients WHERE LOWER(client_name) = LOWER($1)',
+      'SELECT * FROM clients WHERE LOWER(client_name) = LOWER($1)',
       [client]
     );
     
     if (clientResult.rows.length === 0) {
-      return res.status(404).json({ message: `Client '${client}' not found` });
+      console.error(`Client '${client}' not found in database`);
+      // Log all available clients for debugging
+      const allClients = await pgPool.query('SELECT client_name FROM clients');
+      console.log('Available clients:', allClients.rows.map(row => row.client_name));
+      return res.status(404).json({ 
+        message: `Client '${client}' not found`,
+        availableClients: allClients.rows.map(row => row.client_name)
+      });
     }
     
     const bigqueryDataset = clientResult.rows[0].bigquery_dataset;
+    console.log(`Found BigQuery dataset for client: ${bigqueryDataset}`);
     
     // Get financial data from BigQuery
     let query = `
@@ -164,7 +202,6 @@ app.get('/api/financial-data', authenticateToken, checkClientAccess, async (req,
         `;
         
         console.log(`Filtering by month: ${month} (Year: ${year}, Month: ${monthNum})`);
-        console.log(`Query with filter: ${query}`);
       } catch (err) {
         console.warn('Invalid month format:', month);
         // Continue without date filter if invalid
@@ -173,55 +210,39 @@ app.get('/api/financial-data', authenticateToken, checkClientAccess, async (req,
     
     query += ` ORDER BY ordering_id, txnDate, parent_account`;
     
-    console.log('Executing BigQuery query for financial data');
-    const [financialRows] = await bigquery.query(query);
+    console.log('Executing BigQuery query:', query);
     
-    // Log sample dates to diagnose format issues
-    if (financialRows.length > 0) {
-      const sampleDates = financialRows.slice(0, 5).map(row => {
-        // Get date parts to verify the correct month/year
-        let dateParts: { year: number | null, month: number | null, day: number | null } = { 
-          year: null, 
-          month: null, 
-          day: null 
-        };
-        let dateStr = '';
-        
-        if (row.txnDate) {
-          if (typeof row.txnDate === 'string') {
-            dateStr = row.txnDate;
-          } else if (typeof row.txnDate === 'object') {
-            dateStr = row.txnDate.value || row.txnDate.toString();
-          }
-          
-          // Try to parse the date
-          try {
-            const date = new Date(dateStr);
-            if (!isNaN(date.getTime())) {
-              dateParts = {
-                year: date.getFullYear(),
-                month: date.getMonth() + 1, // JS months are 0-indexed
-                day: date.getDate()
-              };
-            }
-          } catch (e) {
-            console.error('Error parsing date:', e);
-          }
-        }
-        
-        return {
-          entry_id: row.entry_id,
-          parent_account: row.parent_account,
-          txnDate: row.txnDate,
-          txnDateString: dateStr,
-          dateParts,
-          actual: row.actual,
-          budget: row.budget_amount
-        };
-      });
+    let financialRows: any[] = [];
+    try {
+      [financialRows] = await bigquery.query(query);
+      console.log(`Successfully retrieved ${financialRows.length} rows from BigQuery`);
       
-      console.log('Sample rows from results:', JSON.stringify(sampleDates, null, 2));
-      console.log(`Total rows returned: ${financialRows.length}`);
+      if (financialRows.length > 0) {
+        console.log('Sample row:', {
+          entry_id: financialRows[0].entry_id,
+          parent_account: financialRows[0].parent_account,
+          txnDate: financialRows[0].txnDate,
+          actual: financialRows[0].actual,
+          budget: financialRows[0].budget_amount
+        });
+      }
+    } catch (error: any) {
+      console.error('Error fetching financial data from BigQuery:', error);
+      if (error.response) {
+        console.error('Error response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      }
+      if (error.errors) {
+        console.error('Error details:', error.errors);
+      }
+      res.status(500).json({ 
+        message: 'Failed to fetch financial data',
+        error: error.message || String(error)
+      });
+      return;
     }
     
     // Get comments from PostgreSQL
@@ -486,7 +507,7 @@ app.patch('/api/financial-comments/:entry_id', async (req, res) => {
         INSERT INTO ${commentsTableName} (
           comment_id, entry_id, comment_text, created_by, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6)
-      `, [
+    `, [
         comment_id, 
         entry_id, 
         comment_text, 
@@ -623,6 +644,81 @@ app.post('/api/trigger-sync', authenticateToken, async (req, res) => {
     });
   }
 });
+
+// Initialize BigQuery client
+console.log('Initializing BigQuery client...');
+console.log('Project ID:', process.env.PROJECT_ID);
+const credentialsPath = path.resolve(__dirname, '../credentials/service-account.json');
+console.log('Credentials path:', credentialsPath);
+
+// Verify credentials file exists
+try {
+  const fs = require('fs');
+  if (!fs.existsSync(credentialsPath)) {
+    console.error('Credentials file does not exist at:', credentialsPath);
+  } else {
+    console.log('Credentials file exists');
+    // Read and log the first few characters of the file (without sensitive data)
+    const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
+    const credentialsJson = JSON.parse(credentialsContent);
+    console.log('Credentials file contains:', {
+      type: credentialsJson.type,
+      project_id: credentialsJson.project_id,
+      client_email: credentialsJson.client_email,
+      private_key: credentialsJson.private_key ? 'Set' : 'Not set'
+    });
+  }
+} catch (error) {
+  console.error('Error reading credentials file:', error);
+}
+
+const bigquery = new BigQuery({
+  projectId: process.env.PROJECT_ID,
+  keyFilename: credentialsPath
+});
+
+// Test BigQuery connection
+async function testBigQueryConnection() {
+  try {
+    console.log('Testing BigQuery connection...');
+    console.log('Attempting to list datasets...');
+    
+    // First, verify the project exists
+    console.log('Verifying project access...');
+    const projectId = await bigquery.getProjectId();
+    console.log('Project verified:', projectId);
+    
+    // Then list datasets
+    console.log('Listing datasets...');
+    const [datasets] = await bigquery.getDatasets();
+    console.log('BigQuery connection successful. Available datasets:', datasets.map(d => d.id));
+    
+    // Test query to verify permissions
+    console.log('Testing query permissions...');
+    const testQuery = 'SELECT 1 as test';
+    const [rows] = await bigquery.query(testQuery);
+    console.log('Query test successful:', rows);
+  } catch (error: any) {
+    console.error('BigQuery connection test failed:', error);
+    if (error.response) {
+      console.error('Error response:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
+    if (error.errors) {
+      console.error('Error details:', error.errors);
+    }
+    if (error.code) {
+      console.error('Error code:', error.code);
+    }
+    if (error.message) {
+      console.error('Error message:', error.message);
+    }
+    console.error('Full error:', error);
+  }
+}
 
 // Initialize database and start server
 async function startServer() {

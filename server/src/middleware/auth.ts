@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserService } from '../services/userService';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// Ensure JWT_SECRET is set
+if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is not set');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 declare global {
     namespace Express {
@@ -24,14 +29,26 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     }
 
     try {
+        console.log('JWT Secret being used:', JWT_SECRET ? 'Set' : 'Not set');
+        console.log('Token being verified:', token.substring(0, 10) + '...');
+        
         const decoded = jwt.verify(token, JWT_SECRET) as {
             email: string;
             role: string;
         };
         
+        console.log('Token successfully decoded:', decoded);
         req.user = decoded;
         next();
     } catch (error) {
+        console.error('JWT verification error:', error);
+        if (error instanceof jwt.JsonWebTokenError) {
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                expiredAt: (error as jwt.TokenExpiredError).expiredAt
+            });
+        }
         return res.status(403).json({ error: 'Invalid or expired token' });
     }
 };

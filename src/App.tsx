@@ -1,278 +1,161 @@
-import React, { useState } from 'react';
-import './App.css';
-import { 
-  Container, 
-  CssBaseline, 
-  ThemeProvider, 
-  createTheme, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Box,
-  Tab,
-  Tabs,
-  Button,
-  CircularProgress
-} from '@mui/material';
-import FinancialTable from './components/FinancialTable';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Login from './components/Login';
+import Dashboard from './components/Dashboard';
+import { FinancialTable } from './components/FinancialTable';
 import AddClient from './components/AddClient';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { Login } from './components/Login';
+import Layout from './components/Layout';
 
-// Create a theme
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#FFA48A', // Holistic Money peach/salmon color
+      main: '#36573b', // Dark green
+      light: '#9cbaa6', // Light green
+      dark: '#2d4a5a', // Darker green
     },
     secondary: {
-      main: '#70A288', // Soft green complementary color
+      main: '#425563', // Slate blue
+      light: '#e5e0dd', // Light gray
+      dark: '#2d4a5a', // Dark slate
+    },
+    error: {
+      main: '#ffa38b', // Coral
+      light: '#ffd1c4',
+      dark: '#e58c7a',
+    },
+    warning: {
+      main: '#fdaa63', // Orange
+      light: '#ffc99a',
+      dark: '#e58c7a',
+    },
+    success: {
+      main: '#9cbaa6', // Light green
+      light: '#c4d5c9',
+      dark: '#7a9a85',
     },
     background: {
-      default: '#FFFFFF',
-      paper: '#F5F5F5',
+      default: '#ffffff',
+      paper: '#ffffff',
+    },
+    text: {
+      primary: '#2d4a5a',
+      secondary: '#425563',
+    },
+  },
+  typography: {
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: {
+      fontWeight: 600,
+      letterSpacing: '-0.02em',
+    },
+    h2: {
+      fontWeight: 600,
+      letterSpacing: '-0.02em',
+    },
+    h3: {
+      fontWeight: 600,
+      letterSpacing: '-0.02em',
+    },
+    h4: {
+      fontWeight: 600,
+      letterSpacing: '-0.02em',
+    },
+    h5: {
+      fontWeight: 600,
+      letterSpacing: '-0.02em',
+    },
+    h6: {
+      fontWeight: 600,
+      letterSpacing: '-0.02em',
+    },
+    button: {
+      textTransform: 'none',
+      fontWeight: 500,
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          padding: '8px 16px',
+          fontWeight: 500,
+        },
+        contained: {
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 'none',
+          },
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+          padding: '12px 16px',
+        },
+        head: {
+          backgroundColor: '#f5f7f8',
+          fontWeight: 600,
+          color: '#2d4a5a',
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          '&:nth-of-type(odd)': {
+            backgroundColor: '#fafbfc',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 12,
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 8,
+          },
+        },
+      },
     },
   },
 });
-
-// Protected Route component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-
-  return <>{children}</>;
-};
-
-// Navigation component
-const Navigation = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
-  
-  // Determine which tab is active based on the current path
-  const getTabValue = () => {
-    if (location.pathname.startsWith('/settings')) {
-      return 1;
-    }
-    return 0;
-  };
-  
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    if (newValue === 0) {
-      navigate('/');
-    } else {
-      navigate('/settings');
-    }
-  };
-  
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-  
-  return (
-    <Box sx={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      gap: 2,
-      '& .MuiTab-root': {
-        color: '#606060',
-        fontWeight: 500,
-        textTransform: 'none',
-        minWidth: 'auto',
-        px: 2,
-        '&.Mui-selected': {
-          color: theme.palette.primary.main,
-        },
-      }
-    }}>
-      <Tabs 
-        value={getTabValue()} 
-        onChange={handleTabChange}
-        indicatorColor="primary"
-        textColor="primary"
-        sx={{ 
-          '& .MuiTabs-indicator': {
-            backgroundColor: theme.palette.primary.main,
-          }
-        }}
-      >
-        <Tab label="Client P&L Analysis" />
-        <Tab label="Settings" />
-      </Tabs>
-      <Button 
-        variant="outlined" 
-        color="primary" 
-        onClick={handleLogout}
-        sx={{ ml: 2 }}
-      >
-        Logout
-      </Button>
-    </Box>
-  );
-};
-
-// Main App component
-const AppContent: React.FC = () => {
-  const { setToken, isAuthenticated, isLoading } = useAuth();
-
-  const handleLogin = (token: string) => {
-    setToken(token);
-  };
-
-  if (isLoading) {
-    return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? (
-            <Navigate to="/" />
-          ) : (
-            <Login onLogin={handleLogin} />
-          )
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <AppBar 
-              position="static" 
-              sx={{ 
-                boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.08)',
-                bgcolor: '#F5F5F5',
-                borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-                py: 0.5,
-              }}
-              elevation={0}
-            >
-              <Toolbar>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  flexGrow: 1,
-                  justifyContent: 'space-between'
-                }}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center' 
-                  }}>
-                    <img 
-                      src="/holistic-money-logo.png" 
-                      alt="Holistic Money" 
-                      style={{ 
-                        height: '44px', 
-                        marginRight: '20px',
-                        filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))'
-                      }} 
-                    />
-                  </Box>
-                  
-                  <Navigation />
-                </Box>
-              </Toolbar>
-            </AppBar>
-            <Container maxWidth="xl">
-              <Box sx={{ my: 4 }}>
-                <FinancialTable />
-              </Box>
-            </Container>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <AppBar 
-              position="static" 
-              sx={{ 
-                boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.08)',
-                bgcolor: '#F5F5F5',
-                borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-                py: 0.5,
-              }}
-              elevation={0}
-            >
-              <Toolbar>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  flexGrow: 1,
-                  justifyContent: 'space-between'
-                }}>
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center' 
-                  }}>
-                    <img 
-                      src="/holistic-money-logo.png" 
-                      alt="Holistic Money" 
-                      style={{ 
-                        height: '44px', 
-                        marginRight: '20px',
-                        filter: 'drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1))'
-                      }} 
-                    />
-                  </Box>
-                  
-                  <Navigation />
-                </Box>
-              </Toolbar>
-            </AppBar>
-            <Container maxWidth="xl">
-              <Box sx={{ my: 4 }}>
-                <AddClient />
-              </Box>
-            </Container>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
-  );
-};
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/financial" element={<Layout><FinancialTable /></Layout>} />
+          <Route path="/clients" element={<Layout><AddClient /></Layout>} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
+        </Routes>
       </Router>
     </ThemeProvider>
   );
 }
 
 export default App;
+
