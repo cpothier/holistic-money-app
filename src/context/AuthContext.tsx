@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { validateToken } from '../services/api_new';
 
 interface AuthContextType {
   token: string | null;
@@ -24,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const validateToken = async () => {
+    const validateAuthToken = async () => {
       const storedToken = localStorage.getItem('token');
       if (!storedToken) {
         setToken(null);
@@ -34,14 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        // Validate token with backend
-        const response = await fetch('http://localhost:3001/api/validate-token', {
-          headers: {
-            'Authorization': `Bearer ${storedToken}`
-          }
-        });
-
-        if (response.ok) {
+        const isValid = await validateToken();
+        if (isValid) {
           setToken(storedToken);
           setIsAuthenticated(true);
         } else {
@@ -60,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    validateToken();
+    validateAuthToken();
   }, []);
 
   const handleSetToken = async (newToken: string | null) => {
@@ -69,16 +64,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(newToken);
       
       try {
-        // Validate the new token
-        const response = await fetch('http://localhost:3001/api/validate-token', {
-          headers: {
-            'Authorization': `Bearer ${newToken}`
-          }
-        });
+        const isValid = await validateToken();
+        setIsAuthenticated(isValid);
         
-        setIsAuthenticated(response.ok);
-        
-        if (!response.ok) {
+        if (!isValid) {
           localStorage.removeItem('token');
           setToken(null);
         }
@@ -102,13 +91,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      token, 
-      setToken: handleSetToken, 
-      isAuthenticated,
-      isLoading,
-      logout
-    }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        setToken: handleSetToken,
+        isAuthenticated,
+        isLoading,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
+  Container,
   TextField,
   Typography,
   Paper,
@@ -13,48 +13,41 @@ import {
   TableHead,
   TableRow,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  Snackbar,
-  Alert,
-  Chip,
-  IconButton,
-  TablePagination,
-  Container,
-  Tooltip,
+  DialogContent,
   DialogContentText,
-  FormControlLabel,
-  Switch
+  DialogTitle,
+  Alert,
+  Snackbar,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { fetchClients, addClient, deleteClient } from '../services/api_new';
+import { Add as AddIcon, Edit as EditIcon } from '@mui/icons-material';
+import { fetchClients, addClient, Client } from '../services/api_new';
 
-interface Client {
-  client_id: string;
+interface ClientForm {
   client_name: string;
   bigquery_dataset: string;
   comments_table_name: string;
-  created_at: string;
-  updated_at: string;
   status: 'active' | 'inactive';
 }
 
 const AddClient: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
-  const [clientForm, setClientForm] = useState({
+  const [clientForm, setClientForm] = useState<ClientForm>({
     client_name: '',
     bigquery_dataset: '',
     comments_table_name: '',
-    status: 'active' as 'active' | 'inactive'
+    status: 'active'
   });
   const [openDialog, setOpenDialog] = useState(false);
+  const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error'
   });
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Fetch clients on component mount
   useEffect(() => {
@@ -64,12 +57,7 @@ const AddClient: React.FC = () => {
   const fetchClientsData = async () => {
     try {
       const data = await fetchClients();
-      // Add status property to each client
-      const clientsWithStatus = data.map(client => ({
-        ...client,
-        status: 'active' as const
-      }));
-      setClients(clientsWithStatus);
+      setClients(data);
     } catch (error) {
       console.error('Error fetching clients:', error);
       setSnackbar({
@@ -80,77 +68,41 @@ const AddClient: React.FC = () => {
     }
   };
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    
-    if (!clientForm.client_name.trim()) {
-      errors.client_name = 'Client name is required';
-    } else if (!/^[a-z0-9_]+$/.test(clientForm.client_name)) {
-      errors.client_name = 'Client name can only contain lowercase letters, numbers, and underscores';
-    }
-
-    if (!clientForm.bigquery_dataset.trim()) {
-      errors.bigquery_dataset = 'BigQuery dataset is required';
-    } else if (!/^[a-z0-9_]+$/.test(clientForm.bigquery_dataset)) {
-      errors.bigquery_dataset = 'Dataset name can only contain lowercase letters, numbers, and underscores';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setClientForm(prev => ({
       ...prev,
       [name]: value
     }));
-    // Clear validation error when user types
-    if (validationErrors[name]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setClientForm(prev => ({
-      ...prev,
-      status: e.target.checked ? 'active' : 'inactive'
-    }));
   };
 
   const handleOpenAddDialog = () => {
-    setClientForm({ 
-      client_name: '', 
-      bigquery_dataset: '',
-      comments_table_name: '',
-      status: 'active'
+    setDialogMode('add');
+    setClientForm({ client_name: '', bigquery_dataset: '', comments_table_name: '', status: 'active' });
+    setOpenDialog(true);
+  };
+
+  const handleOpenEditDialog = (client: Client) => {
+    setDialogMode('edit');
+    setEditingClientId(client.client_id);
+    setClientForm({
+      client_name: client.client_name,
+      bigquery_dataset: client.bigquery_dataset,
+      comments_table_name: client.comments_table_name,
+      status: client.status
     });
-    setValidationErrors({});
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setClientForm({ 
-      client_name: '', 
-      bigquery_dataset: '',
-      comments_table_name: '',
-      status: 'active'
-    });
-    setValidationErrors({});
+    setClientForm({ client_name: '', bigquery_dataset: '', comments_table_name: '', status: 'active' });
+    setEditingClientId(null);
   };
 
   const handleAddClient = async () => {
-    if (!validateForm()) return;
-
     try {
-      const newClient = await addClient({
-        ...clientForm,
-        comments_table_name: `${clientForm.client_name}_comments`
-      });
+      const newClient = await addClient(clientForm);
       setClients(prev => [...prev, newClient]);
       handleCloseDialog();
       setSnackbar({
@@ -168,29 +120,6 @@ const AddClient: React.FC = () => {
     }
   };
 
-  const handleDeleteClient = async (clientId: string) => {
-    if (!window.confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteClient(clientId);
-      setClients(prev => prev.filter(client => client.client_id !== clientId));
-      setSnackbar({
-        open: true,
-        message: 'Client deleted successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      console.error('Error deleting client:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to delete client',
-        severity: 'error'
-      });
-    }
-  };
-
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
@@ -198,8 +127,8 @@ const AddClient: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" component="h1">
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h4" component="h1">
             Client Management
           </Typography>
           <Button
@@ -208,7 +137,7 @@ const AddClient: React.FC = () => {
             startIcon={<AddIcon />}
             onClick={handleOpenAddDialog}
           >
-            Add New Client
+            Add Client
           </Button>
         </Box>
 
@@ -219,7 +148,6 @@ const AddClient: React.FC = () => {
                 <TableCell>Client Name</TableCell>
                 <TableCell>BigQuery Dataset</TableCell>
                 <TableCell>Comments Table</TableCell>
-                <TableCell>Status</TableCell>
                 <TableCell>Created At</TableCell>
                 <TableCell>Updated At</TableCell>
                 <TableCell align="center">Actions</TableCell>
@@ -231,40 +159,42 @@ const AddClient: React.FC = () => {
                   <TableCell>{client.client_name}</TableCell>
                   <TableCell>{client.bigquery_dataset}</TableCell>
                   <TableCell>{client.comments_table_name}</TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={client.status} 
-                      color={client.status === 'active' ? 'success' : 'error'} 
-                      size="small"
-                    />
-                  </TableCell>
                   <TableCell>{new Date(client.created_at).toLocaleString()}</TableCell>
                   <TableCell>{new Date(client.updated_at).toLocaleString()}</TableCell>
                   <TableCell align="center">
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                      <Tooltip title="Delete Client">
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleDeleteClient(client.client_id)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
+                    <Tooltip title="Edit Client">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleOpenEditDialog(client)}
+                        color="primary"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
+              {clients.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No clients found. Add a client to get started.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
 
-        {/* Add Client Dialog */}
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle>Add New Client</DialogTitle>
+        {/* Add/Edit Client Dialog */}
+        <Dialog open={openDialog} onClose={handleCloseDialog}>
+          <DialogTitle>
+            {dialogMode === 'add' ? 'Add New Client' : 'Edit Client'}
+          </DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Please enter the client details below. The client name will be used to create a unique table for comments.
+              {dialogMode === 'add' 
+                ? 'Enter the client details below. The comments table name will be automatically generated.'
+                : 'Update the client details below.'}
             </DialogContentText>
             <TextField
               autoFocus
@@ -273,11 +203,10 @@ const AddClient: React.FC = () => {
               label="Client Name"
               type="text"
               fullWidth
+              variant="outlined"
               value={clientForm.client_name}
               onChange={handleInputChange}
-              error={!!validationErrors.client_name}
-              helperText={validationErrors.client_name}
-              sx={{ mt: 2 }}
+              sx={{ mb: 2 }}
             />
             <TextField
               margin="dense"
@@ -285,32 +214,43 @@ const AddClient: React.FC = () => {
               label="BigQuery Dataset"
               type="text"
               fullWidth
+              variant="outlined"
               value={clientForm.bigquery_dataset}
               onChange={handleInputChange}
-              error={!!validationErrors.bigquery_dataset}
-              helperText={validationErrors.bigquery_dataset}
+              helperText="e.g., austin_lifestyler_marts"
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={clientForm.status === 'active'}
-                  onChange={handleStatusChange}
-                  name="status"
-                />
-              }
-              label="Active"
-              sx={{ mt: 2 }}
+            <TextField
+              margin="dense"
+              name="comments_table_name"
+              label="Comments Table Name"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={clientForm.comments_table_name}
+              onChange={handleInputChange}
+              helperText="e.g., comments_table"
+            />
+            <TextField
+              margin="dense"
+              name="status"
+              label="Status"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={clientForm.status}
+              onChange={handleInputChange}
+              helperText="e.g., active"
             />
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Cancel</Button>
             <Button 
-              onClick={handleAddClient} 
+              onClick={dialogMode === 'add' ? handleAddClient : handleAddClient} 
               variant="contained" 
               color="primary"
-              disabled={!clientForm.client_name || !clientForm.bigquery_dataset}
+              disabled={!clientForm.client_name || !clientForm.bigquery_dataset || !clientForm.comments_table_name || !clientForm.status}
             >
-              Add Client
+              {dialogMode === 'add' ? 'Add Client' : 'Update Client'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -320,6 +260,7 @@ const AddClient: React.FC = () => {
           open={snackbar.open}
           autoHideDuration={6000}
           onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert 
             onClose={handleCloseSnackbar} 
