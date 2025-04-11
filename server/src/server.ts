@@ -31,8 +31,18 @@ app.use(
       // Allow requests with no origin (like mobile apps, curl requests)
       if (!origin) return callback(null, true);
       
+      // Parse CORS_ORIGIN environment variable
       const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',');
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      
+      // For each origin, check if it's allowed
+      if (
+        // Exact match in allowed origins list
+        allowedOrigins.indexOf(origin) !== -1 ||
+        // Or match any Vercel preview URL (holistic-moneys-projects.vercel.app)
+        origin.includes('holistic-moneys-projects.vercel.app') ||
+        // Or match the main production domain
+        origin.includes('holistic-money-app.vercel.app')
+      ) {
         callback(null, true);
       } else {
         console.warn(`Origin ${origin} not allowed by CORS policy. Allowed origins: ${allowedOrigins.join(', ')}`);
