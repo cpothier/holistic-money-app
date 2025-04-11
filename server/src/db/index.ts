@@ -7,17 +7,20 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-// Initialize PostgreSQL connection
+// Configure SSL options
+const sslConfig = {
+  rejectUnauthorized: false, // Add this line to fix the self-signed certificate issue
+  ca: process.env.PG_CA_CERT ? fs.readFileSync(process.env.PG_CA_CERT).toString() : undefined
+};
+
+// Create connection pool
 export const pgPool = new Pool({
-  host: process.env.PG_HOST,
+  host: process.env.PG_HOST || 'localhost',
   port: parseInt(process.env.PG_PORT || '5432'),
-  database: process.env.PG_DATABASE,
-  user: process.env.PG_USER,
-  password: process.env.PG_PASSWORD,
-  ssl: process.env.PG_SSL === 'true' ? {
-    rejectUnauthorized: true, // Aiven requires this to be true
-    ca: process.env.PG_CA_CERT ? fs.readFileSync(process.env.PG_CA_CERT).toString() : undefined,
-  } : false,
+  database: process.env.PG_DATABASE || 'holistic_money',
+  user: process.env.PG_USER || 'postgres',
+  password: process.env.PG_PASSWORD || 'postgres',
+  ssl: sslConfig,
   // Connection timeout (longer for cloud databases)
   connectionTimeoutMillis: parseInt(process.env.PG_CONNECTION_TIMEOUT || '30000'),
   // Idle timeout
