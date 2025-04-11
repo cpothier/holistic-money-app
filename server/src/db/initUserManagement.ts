@@ -1,7 +1,7 @@
 import { pgPool } from './index';
 import fs from 'fs';
 import path from 'path';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 // Helper function to execute queries and handle errors
 async function executeQuery(query: string, params: any[] = []): Promise<any> {
