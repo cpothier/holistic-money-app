@@ -11,7 +11,8 @@ import {
   Tab,
   Tabs,
   Button,
-  CircularProgress
+  CircularProgress,
+  Typography
 } from '@mui/material';
 import FinancialTable from './components/FinancialTable';
 import AddClient from './components/AddClient';
@@ -267,16 +268,61 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
-  );
+  // Wrap everything in a try/catch to catch any initialization errors
+  try {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
+    );
+  } catch (error) {
+    console.error('Error initializing App:', error);
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        p={3}
+      >
+        <Container maxWidth="md">
+          <Box 
+            bgcolor="#f5f5f5" 
+            p={4} 
+            borderRadius={2}
+            boxShadow={3}
+            textAlign="center"
+          >
+            <Typography variant="h4" color="error" gutterBottom>
+              Application Error
+            </Typography>
+            <Typography variant="body1" paragraph>
+              There was a problem initializing the application.
+            </Typography>
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => window.location.href = '/test.html'}
+              sx={{ mr: 2 }}
+            >
+              Test API Connection
+            </Button>
+            <Button 
+              variant="outlined"
+              onClick={() => window.location.href = '/index-fallback.html'}
+            >
+              Go to Fallback Page
+            </Button>
+          </Box>
+        </Container>
+      </Box>
+    );
+  }
 }
 
 export default App;

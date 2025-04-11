@@ -30,42 +30,56 @@ const markReactLoaded = () => {
   (window as any).reactLoaded = true;
 };
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
+// Add a last resort error handler - if app fails to load in 10s, redirect to fallback
+setTimeout(() => {
+  if (!(window as any).reactLoaded) {
+    console.error('React app failed to initialize in time - redirecting to fallback');
+    window.location.href = '/index-fallback.html';
+  }
+}, 10000);
 
 try {
-  root.render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
-    </React.StrictMode>
+  const root = ReactDOM.createRoot(
+    document.getElementById('root') as HTMLElement
   );
-  console.log('Root render completed');
-  
-  // Hide loader and mark React as loaded
-  hideLoader();
-  markReactLoaded();
+
+  // Wrap the entire app in a try/catch
+  try {
+    root.render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
+    console.log('Root render completed');
+    
+    // Hide loader and mark React as loaded
+    hideLoader();
+    markReactLoaded();
+  } catch (renderError) {
+    console.error('Error during initial render:', renderError);
+    
+    // Hide loader
+    hideLoader();
+    
+    // Display a basic error message if something went wrong before the error boundary could catch it
+    document.getElementById('root')!.innerHTML = `
+      <div style="padding: 20px; text-align: center;">
+        <h1>Something went wrong</h1>
+        <p>The application failed to start properly.</p>
+        <pre style="text-align: left; background: #f5f5f5; padding: 10px; margin-top: 20px;">
+          ${renderError instanceof Error ? renderError.stack : String(renderError)}
+        </pre>
+        <button onclick="window.location.href='/index-fallback.html'" style="margin-top: 20px; padding: 8px 16px;">
+          Go to Fallback Page
+        </button>
+      </div>
+    `;
+  }
 } catch (error) {
-  console.error('Error during initial render:', error);
-  
-  // Hide loader
-  hideLoader();
-  
-  // Display a basic error message if something went wrong before the error boundary could catch it
-  document.getElementById('root')!.innerHTML = `
-    <div style="padding: 20px; text-align: center;">
-      <h1>Something went wrong</h1>
-      <p>The application failed to start properly.</p>
-      <pre style="text-align: left; background: #f5f5f5; padding: 10px; margin-top: 20px;">
-        ${error instanceof Error ? error.stack : String(error)}
-      </pre>
-      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 8px 16px;">
-        Reload Page
-      </button>
-    </div>
-  `;
+  console.error('Critical error during React initialization:', error);
+  window.location.href = '/index-fallback.html';
 }
 
 // If you want to start measuring performance in your app, pass a function

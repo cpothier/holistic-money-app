@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Holistic Money - Simple Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #FFA48A;
+    }
+    .links {
+      margin-top: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+    .button {
+      background: #FFA48A;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .button.secondary {
+      background: #70A288;
+    }
+    .env-info {
+      margin-top: 30px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 4px;
+      text-align: left;
+      font-family: monospace;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Holistic Money - Simple Test Page</h1>
+    <p>This is a simple HTML page to test if Vercel deployments are working.</p>
+    
+    <div class="links">
+      <a href="/" class="button">Main Application</a>
+      <a href="/test.html" class="button">API Test</a>
+      <a href="/index-fallback.html" class="button secondary">Fallback Page</a>
+      <a href="https://holistic-money-backend-203ef9f87bb9.herokuapp.com/api/health" class="button secondary" target="_blank">Backend Health Check</a>
+    </div>
+    
+    <div class="env-info">
+      <div><strong>Current URL:</strong> <span id="current-url"></span></div>
+      <div><strong>Deployment Time:</strong> <span id="deployment-time"></span></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('current-url').textContent = window.location.href;
+    document.getElementById('deployment-time').textContent = new Date().toISOString();
+    
+    console.log('Simple test page loaded');
+    console.log('Window location:', window.location.href);
+  </script>
+</body>
+</html> 
