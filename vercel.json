@@ -11,6 +11,20 @@
   ],
   "routes": [
     {
+      "src": "/test.html",
+      "dest": "/test.html",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
+      "src": "/index-fallback.html",
+      "dest": "/index-fallback.html",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
       "src": "/static/(.*)",
       "headers": {
         "cache-control": "public, max-age=31536000, immutable",
@@ -41,7 +55,10 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
     }
   ]
 } 
