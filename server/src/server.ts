@@ -13,6 +13,7 @@ import userRoutes from './routes/userRoutes';
 import { authenticateToken, checkClientAccess } from './middleware/auth';
 import { initializeUserManagement } from './db/initUserManagement';
 import { UserService } from './services/userService';
+import { setupCredentialFiles } from './utils/credentials';
 
 // Load environment variables
 dotenv.config();
@@ -685,6 +686,9 @@ app.post('/api/trigger-sync', authenticateToken, async (req, res) => {
 // Initialize database and start server
 async function startServer() {
   try {
+    // Setup credential files from environment variables
+    setupCredentialFiles();
+    
     // Initialize database
     const dbInitialized = await initializeDatabase();
     postgresConnected = dbInitialized; // Set the flag based on database initialization

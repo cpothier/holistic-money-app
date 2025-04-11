@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 // Initialize BigQuery client
 const bigquery = new BigQuery({
   projectId: process.env.PROJECT_ID,
-  keyFilename: path.join(__dirname, '..', '..', 'credentials', 'service-account.json'),
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, '..', '..', 'credentials', 'service-account.json'),
 });
 
 // Initialize PostgreSQL pool with SSL
@@ -23,7 +23,7 @@ const pool = new Pool({
   password: process.env.PG_PASSWORD,
   ssl: {
     rejectUnauthorized: true,
-    ca: fs.readFileSync(caCertPath).toString(),
+    ca: fs.existsSync(caCertPath) ? fs.readFileSync(caCertPath).toString() : process.env.PG_CA_CERT_CONTENT,
   },
 });
 
