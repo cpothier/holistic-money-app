@@ -661,9 +661,13 @@ app.get('/api/validate-token', authenticateToken, (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
-    status: 'up',
-    postgresConnected,
-    timestamp: new Date().toISOString()
+    status: 'ok',
+    message: 'API is running',
+    timestamp: new Date().toISOString(),
+    database: postgresConnected ? 'connected' : 'disconnected',
+    port: port,
+    environment: process.env.NODE_ENV,
+    cors_origin: process.env.CORS_ORIGIN
   });
 });
 

@@ -9,9 +9,9 @@ if (typeof window !== 'undefined') {
   const isVercel = window.location.hostname.includes('vercel.app');
   
   if (isVercel) {
-    // Hard-code the backend URL for Vercel deployments
+    // Hard-code the backend URL for Vercel deployments (Heroku uses dynamic ports)
     API_URL = 'https://holistic-money-backend-203ef9f87bb9.herokuapp.com';
-    console.log('Detected Vercel deployment, using hard-coded API URL:', API_URL);
+    console.log('Detected Vercel deployment, using Heroku backend URL:', API_URL);
   } else {
     // Use environment variable or fallback for development
     API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';

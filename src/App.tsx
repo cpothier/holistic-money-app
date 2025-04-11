@@ -18,6 +18,7 @@ import AddClient from './components/AddClient';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
+import ApiTest from './components/ApiTest';
 
 // Create a theme
 const theme = createTheme({
@@ -160,6 +161,10 @@ const AppContent: React.FC = () => {
             <Login onLogin={handleLogin} />
           )
         }
+      />
+      <Route
+        path="/api-test"
+        element={<ApiTest />}
       />
       <Route
         path="/"
