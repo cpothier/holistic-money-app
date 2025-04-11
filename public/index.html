@@ -14,7 +14,7 @@
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" crossorigin="use-credentials" />
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
@@ -25,19 +25,84 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Holistic Money</title>
+    <!-- Inline styles for initial loading and fallback state -->
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+          Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      }
+      .fallback-container {
+        display: none; /* Will be shown if React fails to load */
+        text-align: center;
+        padding: 40px 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100%;
+      }
+      .spinner {
+        border: 4px solid rgba(255, 164, 138, 0.3);
+        border-radius: 50%;
+        border-top: 4px solid #FFA48A;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    
+    <!-- Initial loading spinner -->
+    <div id="initial-loader" class="loading-spinner">
+      <div class="spinner"></div>
+    </div>
+    
+    <!-- React root -->
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
+    
+    <!-- Fallback content if React fails to load -->
+    <div id="fallback-content" class="fallback-container">
+      <h1>Holistic Money</h1>
+      <p>We're experiencing technical difficulties. Please try:</p>
+      <ol style="text-align: left; display: inline-block;">
+        <li>Refreshing the page</li>
+        <li>Clearing your browser cache</li>
+        <li>Trying again in a few minutes</li>
+      </ol>
+      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFA48A; border: none; border-radius: 4px; color: white; cursor: pointer;">
+        Reload Page
+      </button>
+    </div>
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
+    <script>
+      // Show fallback content if React doesn't load within 10 seconds
+      setTimeout(function() {
+        if (!window.reactLoaded) {
+          document.getElementById('initial-loader').style.display = 'none';
+          document.getElementById('fallback-content').style.display = 'block';
+          console.error('React failed to load within timeout period');
+        }
+      }, 10000);
+      
+      // Add error handler in case JS bundle fails to load
+      window.addEventListener('error', function(e) {
+        if (e.filename && (e.filename.includes('.js') || e.filename.includes('static'))) {
+          document.getElementById('initial-loader').style.display = 'none';
+          document.getElementById('fallback-content').style.display = 'block';
+          console.error('JS resource failed to load:', e.filename);
+        }
+      }, true);
+    </script>
   </body>
 </html>

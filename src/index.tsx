@@ -17,6 +17,19 @@ console.log('PUBLIC_URL:', process.env.PUBLIC_URL);
 console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
 console.log('Window location:', window.location.href);
 
+// Hide initial loader
+const hideLoader = () => {
+  const loader = document.getElementById('initial-loader');
+  if (loader) {
+    loader.style.display = 'none';
+  }
+};
+
+// Mark React as loaded for the fallback timer
+const markReactLoaded = () => {
+  (window as any).reactLoaded = true;
+};
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
@@ -30,8 +43,16 @@ try {
     </React.StrictMode>
   );
   console.log('Root render completed');
+  
+  // Hide loader and mark React as loaded
+  hideLoader();
+  markReactLoaded();
 } catch (error) {
   console.error('Error during initial render:', error);
+  
+  // Hide loader
+  hideLoader();
+  
   // Display a basic error message if something went wrong before the error boundary could catch it
   document.getElementById('root')!.innerHTML = `
     <div style="padding: 20px; text-align: center;">
