@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -10,7 +10,6 @@ import {
   Typography,
   Box,
   IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -22,7 +21,6 @@ import {
   FormControl,
   InputLabel,
   CircularProgress,
-  Alert,
   Stack,
   alpha,
   Chip
@@ -33,10 +31,9 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Comment as CommentIcon,
-  Delete as DeleteIcon
 } from '@mui/icons-material';
-import { FinancialData, FinancialComment } from '../interfaces/FinancialData';
-import { getFinancialData, getComments, addComment, updateComment, deleteComment, fetchClients, Client } from '../services/api_new';
+import { FinancialData } from '../interfaces/FinancialData';
+import { getFinancialData, addComment, updateComment, fetchClients, Client } from '../services/api_new';
 
 // Define theme colors based on holistic-money.com
 const THEME_COLORS = {
@@ -63,7 +60,6 @@ interface GroupedFinancialData {
 }
 
 const FinancialTable: React.FC = () => {
-  const [financialData, setFinancialData] = useState<FinancialData[]>([]);
   const [groupedData, setGroupedData] = useState<GroupedFinancialData[]>([]);
   const [totalActual, setTotalActual] = useState<number>(0);
   const [totalBudget, setTotalBudget] = useState<number>(0);
@@ -84,7 +80,6 @@ const FinancialTable: React.FC = () => {
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
   const [commentText, setCommentText] = useState<string>('');
   const [commentId, setCommentId] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('User'); // In a real app, would come from auth
 
   // Group financial data by category (parent_account)
   const groupFinancialData = (data: FinancialData[]): GroupedFinancialData[] => {
@@ -140,7 +135,7 @@ const FinancialTable: React.FC = () => {
   };
   
   // Function to load financial data
-  const loadFinancialData = async () => {
+  const loadFinancialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -158,7 +153,6 @@ const FinancialTable: React.FC = () => {
       const response = await getFinancialData(selectedClient, selectedMonth);
       
       // Reset states
-      setFinancialData(response.data);
       setTotalActual(response.totalActual);
       setTotalBudget(response.totalBudget);
       
@@ -173,14 +167,13 @@ const FinancialTable: React.FC = () => {
         setError('Failed to load financial data');
       }
       // Reset states on error
-      setFinancialData([]);
       setGroupedData([]);
       setTotalActual(0);
       setTotalBudget(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedClient, selectedMonth]);
 
   // Fetch clients from the API
   useEffect(() => {
@@ -203,7 +196,7 @@ const FinancialTable: React.FC = () => {
     };
     
     loadClients();
-  }, []);
+  }, [selectedClient]);
   
   // Display names for clients (formatted for better display)
   const getClientDisplayName = (clientName: string): string => {
@@ -222,7 +215,7 @@ const FinancialTable: React.FC = () => {
   // Fetch financial data
   useEffect(() => {
     loadFinancialData();
-  }, [selectedMonth, selectedClient]);
+  }, [selectedMonth, selectedClient, loadFinancialData]);
   
   const handleOpenCommentDialog = (entry: FinancialData) => {
     setSelectedEntry(entry.entry_id);
@@ -269,15 +262,6 @@ const FinancialTable: React.FC = () => {
       handleCloseCommentDialog();
     } catch (error) {
       console.error('Error updating comment:', error);
-    }
-  };
-
-  const handleDeleteComment = async (entryId: string) => {
-    try {
-      await deleteComment(entryId, selectedClient);
-      await loadFinancialData();
-    } catch (error) {
-      console.error('Error deleting comment:', error);
     }
   };
 
@@ -391,10 +375,6 @@ const FinancialTable: React.FC = () => {
 
   // Parse the selected month correctly
   const [year, month] = selectedMonth.split('-').map(Number);
-  
-  // Create a date object with the correct year and month
-  // JavaScript months are 0-indexed, so we subtract 1 from the month
-  const date = new Date(year, month - 1, 1);
   
   // Format the month and year correctly
   const monthNames = [

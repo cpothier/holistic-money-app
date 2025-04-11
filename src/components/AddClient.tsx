@@ -42,7 +42,6 @@ const AddClient: React.FC = () => {
   });
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
-  const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -84,7 +83,6 @@ const AddClient: React.FC = () => {
 
   const handleOpenEditDialog = (client: Client) => {
     setDialogMode('edit');
-    setEditingClientId(client.client_id);
     setClientForm({
       client_name: client.client_name,
       bigquery_dataset: client.bigquery_dataset,
@@ -97,7 +95,6 @@ const AddClient: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setClientForm({ client_name: '', bigquery_dataset: '', comments_table_name: '', status: 'active' });
-    setEditingClientId(null);
   };
 
   const handleAddClient = async () => {

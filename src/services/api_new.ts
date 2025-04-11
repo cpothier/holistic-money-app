@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { FinancialData, FinancialDataResponse } from '../interfaces/FinancialData';
 
-// Check if we're in development or production
-const isDevelopment = process.env.NODE_ENV === 'development';
+// Set API URL based on environment
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
 
 console.log('Environment:', process.env.NODE_ENV);

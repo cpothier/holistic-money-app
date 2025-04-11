@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './App.css';
 import { 
   Container, 
@@ -7,7 +7,6 @@ import {
   createTheme, 
   AppBar, 
   Toolbar, 
-  Typography, 
   Box,
   Tab,
   Tabs,
@@ -16,11 +15,9 @@ import {
 } from '@mui/material';
 import FinancialTable from './components/FinancialTable';
 import AddClient from './components/AddClient';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Login } from './components/Login';
-import Dashboard from './components/Dashboard';
-import Layout from './components/Layout';
 
 // Create a theme
 const theme = createTheme({

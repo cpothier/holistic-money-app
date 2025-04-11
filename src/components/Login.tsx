@@ -10,7 +10,6 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/api_new';
-import { useAuth } from '../context/AuthContext';
 
 interface LoginProps {
   onLogin: (token: string) => void;
