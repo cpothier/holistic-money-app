@@ -1,8 +1,26 @@
 import axios from 'axios';
 import { FinancialData, FinancialDataResponse } from '../interfaces/FinancialData';
 
-// Set API URL based on environment
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
+// Detect environment - Vercel deployment isn't correctly getting environment variables
+let API_URL: string;
+
+// Try to determine if we're running in production by checking the hostname
+if (typeof window !== 'undefined') {
+  const isVercel = window.location.hostname.includes('vercel.app');
+  
+  if (isVercel) {
+    // Hard-code the backend URL for Vercel deployments
+    API_URL = 'https://holistic-money-backend-203ef9f87bb9.herokuapp.com';
+    console.log('Detected Vercel deployment, using hard-coded API URL:', API_URL);
+  } else {
+    // Use environment variable or fallback for development
+    API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
+    console.log('Using environment variable for API URL:', API_URL);
+  }
+} else {
+  // Fallback if window is not defined (during build/SSR)
+  API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3002';
+}
 
 console.log('Environment:', process.env.NODE_ENV);
 console.log('API URL:', API_URL);
