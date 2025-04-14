@@ -58,10 +58,28 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      .button {
+        display: inline-block;
+        background: #FFA48A;
+        color: white;
+        padding: 10px 20px;
+        margin: 10px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+      }
     </style>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>
+      <div style="text-align: center; padding: 20px;">
+        <h1>JavaScript Required</h1>
+        <p>You need to enable JavaScript to run this app.</p>
+        <a href="/index-override.html" style="color: #FFA48A;">Try Alternative Version</a>
+      </div>
+    </noscript>
     
     <!-- Initial loading spinner -->
     <div id="initial-loader" class="loading-spinner">
@@ -74,18 +92,33 @@
     <!-- Fallback content if React fails to load -->
     <div id="fallback-content" class="fallback-container">
       <h1>Holistic Money</h1>
-      <p>We're experiencing technical difficulties. Please try:</p>
-      <ol style="text-align: left; display: inline-block;">
-        <li>Refreshing the page</li>
-        <li>Clearing your browser cache</li>
-        <li>Trying again in a few minutes</li>
-      </ol>
-      <button onclick="window.location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #FFA48A; border: none; border-radius: 4px; color: white; cursor: pointer;">
-        Reload Page
-      </button>
+      <p>We're experiencing technical difficulties with the main application.</p>
+      <div>
+        <a href="/index-override.html" class="button">Try Alternative Version</a>
+        <a href="/test.html" class="button" style="background: #70A288;">Test API Connection</a>
+      </div>
+      <div style="margin-top: 20px;">
+        <p>Or try these steps:</p>
+        <ol style="text-align: left; display: inline-block;">
+          <li>Refreshing the page</li>
+          <li>Clearing your browser cache</li>
+          <li>Trying again in a few minutes</li>
+        </ol>
+        <button onclick="window.location.reload()" class="button" style="margin-top: 20px;">
+          Reload Page
+        </button>
+      </div>
     </div>
 
     <script>
+      // Flag to track React initialization
+      window.reactLoaded = false;
+      
+      // Set emergency redirect if nothing happens
+      const emergencyRedirect = setTimeout(function() {
+        window.location.href = '/index-override.html';
+      }, 25000);
+      
       // Show fallback content if React doesn't load within 10 seconds
       setTimeout(function() {
         if (!window.reactLoaded) {
@@ -93,7 +126,7 @@
           document.getElementById('fallback-content').style.display = 'block';
           console.error('React failed to load within timeout period');
         }
-      }, 10000);
+      }, 8000);
       
       // Add error handler in case JS bundle fails to load
       window.addEventListener('error', function(e) {
@@ -101,6 +134,63 @@
           document.getElementById('initial-loader').style.display = 'none';
           document.getElementById('fallback-content').style.display = 'block';
           console.error('JS resource failed to load:', e.filename);
+        }
+      }, true);
+      
+      // Function to detect React rendering
+      function checkReactRendered() {
+        if (document.getElementById('root').childElementCount > 0) {
+          window.reactLoaded = true;
+          document.getElementById('initial-loader').style.display = 'none';
+          clearTimeout(emergencyRedirect);
+        }
+      }
+      
+      // Set up observer to detect when React mounts content
+      window.addEventListener('DOMContentLoaded', function() {
+        const observer = new MutationObserver(function() {
+          checkReactRendered();
+        });
+        
+        observer.observe(document.getElementById('root'), {
+          childList: true,
+          subtree: true
+        });
+        
+        // Also periodically check manually
+        const checkInterval = setInterval(function() {
+          if (window.reactLoaded) {
+            clearInterval(checkInterval);
+          } else {
+            checkReactRendered();
+          }
+        }, 1000);
+      });
+      
+      // Track resource loading
+      let resourcesLoaded = 0;
+      let resourcesFailed = 0;
+      
+      // Listen for resource load events
+      window.addEventListener('load', function(e) {
+        resourcesLoaded++;
+        if (resourcesLoaded > 10 && !window.reactLoaded) {
+          // If many resources loaded but React still not running, check DOM
+          checkReactRendered();
+        }
+      }, true);
+      
+      // Listen for resource error events
+      window.addEventListener('error', function(e) {
+        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+          resourcesFailed++;
+          console.error('Resource failed to load:', e.target.src || e.target.href);
+          
+          // If too many resources fail, show fallback
+          if (resourcesFailed > 2) {
+            document.getElementById('initial-loader').style.display = 'none';
+            document.getElementById('fallback-content').style.display = 'block';
+          }
         }
       }, true);
     </script>

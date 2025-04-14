@@ -1,0 +1,3 @@
+/* /index.html 200
+/api/* https://holistic-money-backend.herokuapp.com/api/:splat 200
+/* /index-override.html 404 

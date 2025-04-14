@@ -5,7 +5,8 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build"
+        "distDir": "build",
+        "zeroConfig": true
       }
     }
   ],
@@ -25,33 +26,46 @@
       }
     },
     {
+      "src": "/index-simple.html",
+      "dest": "/index-simple.html",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
+      "src": "/index-direct.html",
+      "dest": "/index-direct.html",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
+      "src": "/index-override.html",
+      "dest": "/index-override.html",
+      "headers": {
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
+    },
+    {
       "src": "/static/(.*)",
+      "dest": "/static/$1",
       "headers": {
-        "cache-control": "public, max-age=31536000, immutable",
-        "content-type": "application/javascript; charset=utf-8"
-      },
-      "continue": true
+        "cache-control": "public, max-age=31536000, immutable"
+      }
     },
     {
-      "src": "/(.*)\\.js$",
-      "headers": {
-        "content-type": "application/javascript; charset=utf-8"
-      },
-      "continue": true
+      "src": "/(favicon.ico|manifest.json|robots.txt|logo.*\\.png|holistic-money-logo.png)",
+      "dest": "/$1"
     },
     {
-      "src": "/(.*)\\.css$",
-      "headers": {
-        "content-type": "text/css; charset=utf-8"
-      },
-      "continue": true
+      "handle": "filesystem"
     },
     {
-      "src": "/(.*)\\.json$",
+      "src": "/",
+      "dest": "/index-override.html",
       "headers": {
-        "content-type": "application/json; charset=utf-8"
-      },
-      "continue": true
+        "cache-control": "no-cache, no-store, must-revalidate"
+      }
     },
     {
       "src": "/(.*)",
