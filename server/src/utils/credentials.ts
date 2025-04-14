@@ -48,8 +48,25 @@ export const setupCredentialFiles = () => {
   
   if (SERVICE_ACCOUNT_CONTENT) {
     try {
-      fs.writeFileSync(SERVICE_ACCOUNT_PATH, SERVICE_ACCOUNT_CONTENT, 'utf8');
+      // Check if the content is already in JSON format or needs to be parsed
+      let formattedContent = SERVICE_ACCOUNT_CONTENT;
+      
+      // Try to parse the JSON content to ensure it's properly formatted
+      try {
+        const parsed = JSON.parse(SERVICE_ACCOUNT_CONTENT);
+        // Pretty print JSON for better readability in case of inspection
+        formattedContent = JSON.stringify(parsed, null, 2);
+        console.log('Successfully validated Google credentials JSON format');
+      } catch (jsonError) {
+        console.warn('Service account content is not valid JSON, will write as-is:', jsonError);
+      }
+      
+      fs.writeFileSync(SERVICE_ACCOUNT_PATH, formattedContent, 'utf8');
       console.log(`Successfully wrote service account JSON to ${SERVICE_ACCOUNT_PATH}`);
+      
+      // Set the environment variable to point to this file
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = SERVICE_ACCOUNT_PATH;
+      console.log(`Set GOOGLE_APPLICATION_CREDENTIALS environment variable to ${SERVICE_ACCOUNT_PATH}`);
     } catch (error) {
       console.error('Failed to write service account JSON:', error);
     }
@@ -71,6 +88,18 @@ export const getCredentialPaths = () => {
   
   const caCertPath = path.join(CREDENTIALS_DIR, 'ca.pem');
   const serviceAccountPath = path.join(CREDENTIALS_DIR, 'service-account.json');
+  
+  // Double-check if service account file exists and is readable
+  if (fs.existsSync(serviceAccountPath)) {
+    try {
+      const content = fs.readFileSync(serviceAccountPath, 'utf8');
+      JSON.parse(content); // Validate JSON
+      // Set environment variable to this file path for libraries that rely on it
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountPath;
+    } catch (error) {
+      console.error(`Service account file exists but is not valid JSON: ${serviceAccountPath}`, error);
+    }
+  }
   
   return {
     caCertPath,

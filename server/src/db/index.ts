@@ -50,10 +50,38 @@ pgPool.on('error', (err) => {
 });
 
 // Initialize BigQuery client
-export const bigquery = new BigQuery({
-  projectId: process.env.PROJECT_ID,
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-});
+export let bigquery: BigQuery;
+
+try {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_CONTENT) {
+    console.log('Initializing BigQuery using credentials content');
+    const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_CONTENT);
+    bigquery = new BigQuery({
+      projectId: process.env.PROJECT_ID || credentials.project_id,
+      credentials: credentials
+    });
+    console.log('BigQuery initialized with credentials content');
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    console.log('Initializing BigQuery using credentials file');
+    bigquery = new BigQuery({
+      projectId: process.env.PROJECT_ID,
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    });
+    console.log('BigQuery initialized with credentials file');
+  } else {
+    console.warn('No Google credentials found. BigQuery operations will fail.');
+    // Create a dummy BigQuery instance as a fallback
+    bigquery = new BigQuery({
+      projectId: process.env.PROJECT_ID || 'unknown-project'
+    });
+  }
+} catch (error) {
+  console.error('Error initializing BigQuery client:', error);
+  // Create a dummy BigQuery instance as a fallback
+  bigquery = new BigQuery({
+    projectId: process.env.PROJECT_ID || 'unknown-project'
+  });
+}
 
 // Initialize database by running setup script
 export const initializeDatabase = async () => {

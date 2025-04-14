@@ -1,17 +1,11 @@
 import { Pool } from 'pg';
-import { BigQuery } from '@google-cloud/bigquery';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import { bigquery } from '../db'; // Import the shared BigQuery instance
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
-
-// Initialize BigQuery client
-const bigquery = new BigQuery({
-  projectId: process.env.PROJECT_ID,
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(__dirname, '..', '..', 'credentials', 'service-account.json'),
-});
 
 // Initialize PostgreSQL pool with SSL
 const caCertPath = path.join(__dirname, '..', '..', 'credentials', 'ca.pem');
